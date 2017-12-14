@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>wuxian.me</groupId>
+    <artifactId>Datetime-SparkSql</artifactId>
+    <version>1.0-SNAPSHOT</version>
+
+    <properties>
+        <hadoop.version>3.0.0-beta1</hadoop.version>
+        <project.version>2.2.0</project.version>
+    </properties>
+
+    <dependencies>
+        <!-- dependencies are always listed in sorted order by groupId, artifectId -->
+        <!-- intra-project -->
+
+        <dependency>
+            <groupId>joda-time</groupId>
+            <artifactId>joda-time</artifactId>
+            <version>2.9.9</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hive</groupId>
+            <artifactId>hive-exec</artifactId>
+            <version>2.2.0</version>
+            <optional>true</optional>
+        </dependency>
+        <!-- inter-project -->
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-common</artifactId>
+            <version>${hadoop.version}</version>
+            <optional>true</optional>
+        </dependency>
+    </dependencies>
+    
+</project>
