@@ -35,11 +35,17 @@ public class DateTimeUDF extends GenericUDF {
 
     public static final String MINUS_DAY = "minus_day";
     public static final String PLUS_DAY = "plus_day";
+
+    public static final String DAY_FIRST_SECOND = "day_first_second";
+    public static final String DAY_LAST_SECOND = "day_last_second";
+
     private static Set<String> supportedFunction = new HashSet<String>();
 
     static {
         supportedFunction.add(MINUS_DAY);
         supportedFunction.add(PLUS_DAY);
+        supportedFunction.add(DAY_FIRST_SECOND);
+        supportedFunction.add(DAY_LAST_SECOND);
     }
 
     public static final String DATE_TIME_FORMAT = "yyyy-MM-dd HH:mm:ss";
@@ -70,6 +76,7 @@ public class DateTimeUDF extends GenericUDF {
      */
     public ObjectInspector initialize(ObjectInspector[] objectInspectors) throws UDFArgumentException {
         this.objectInspectors = objectInspectors;
+
         return PrimitiveObjectInspectorFactory.writableTimestampObjectInspector;
     }
 
@@ -88,12 +95,13 @@ public class DateTimeUDF extends GenericUDF {
         }
 
         DateTime dateTime = null;
-        if (dateConverter != null) {
-            DateWritable dateWritable = (DateWritable) dateConverter.convert(deferredObjects[0].get());
-            dateTime = new DateTime(dateWritable.get());
-        } else {
+        if (timestampConverter != null) {
             TimestampWritable timestampWritable = (TimestampWritable) timestampConverter.convert(deferredObjects[0].get());
             dateTime = new DateTime(timestampWritable.getTimestamp().getTime());
+
+        } else {
+            DateWritable dateWritable = (DateWritable) dateConverter.convert(deferredObjects[0].get());
+            dateTime = new DateTime(dateWritable.get());
         }
 
         return dateTime;
@@ -119,11 +127,11 @@ public class DateTimeUDF extends GenericUDF {
             throws HiveException, UDFArgumentException {
 
         dateTime = getDateTime(objectInspectors, deferredObjects);
+
         functionName = getFuncName(objectInspectors, deferredObjects).toString();
         if (!supportedFunction.contains(functionName)) {
             throw new HiveException("func: " + functionName + " is not supported!");
         }
-
     }
 
     private void handleMinusDay(ObjectInspector[] objectInspectors, DeferredObject[] deferredObjects)
@@ -137,16 +145,33 @@ public class DateTimeUDF extends GenericUDF {
         }
 
         IntWritable intWritable = (IntWritable) numberConverter.convert(deferredObjects[2].get());
-
         dateTime = dateTime.minusDays(intWritable.get());
+    }
 
+    //Usage: select date_time(date_time(current_timestamp(),'minus_day',1),'day_first_second');
+    private void handleFirstSecond(ObjectInspector[] objectInspectors, DeferredObject[] deferredObjects)
+            throws HiveException, UDFArgumentException {
+        dateTime = dateTime.hourOfDay().withMinimumValue().millisOfDay().withMinimumValue();
+    }
+
+    //Usage: select date_time(date_time(current_timestamp(),'minus_day',1),'day_first_second');
+    private void handleLastSecond(ObjectInspector[] objectInspectors, DeferredObject[] deferredObjects)
+            throws HiveException, UDFArgumentException {
+        dateTime = dateTime.hourOfDay().withMaximumValue().millisOfDay().withMaximumValue();
     }
 
     private void handleFunction(String functionName, ObjectInspector[] objectInspectors, DeferredObject[] deferredObjects)
             throws HiveException, UDFArgumentException {
+        if (functionName == null || functionName.length() == 0) {
+            return;
+        }
 
         if (functionName.equals(MINUS_DAY)) {
             handleMinusDay(objectInspectors, deferredObjects);
+        } else if (functionName.equals(DAY_FIRST_SECOND)) {
+            handleFirstSecond(objectInspectors, deferredObjects);
+        } else if (functionName.equals(DAY_LAST_SECOND)) {
+            handleLastSecond(objectInspectors, deferredObjects);
         } else {
             throw new HiveException("func: " + functionName + " is not supported!");
         }
@@ -154,6 +179,7 @@ public class DateTimeUDF extends GenericUDF {
     }
 
     public Object evaluate(DeferredObject[] deferredObjects) throws HiveException {
+
         if (deferredObjects.length == 0) {
             return new TimestampWritable(Timestamp.valueOf(DateTime.now().toString(DATE_TIME_FORMAT)));
         }
