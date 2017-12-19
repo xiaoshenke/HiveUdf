@@ -22,19 +22,23 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * 支持select date_time(),select date_time(current_date),date_time(current_timestamp)
- * date_time(date_time(),minusday,1,true)
+ * single function supported:
+ * 1 select date_time();
+ * 2 select date_time(current_date(),'minus_day',1)
+ * 3 select date_time(current_date(),'day_first_second')
+ * or combine them:
+ * select date_time(date_time(current_date(),'minus_day',1),'day_first_second') etc.
  */
 
 @UDFType(deterministic = true)
 @Description(name = "date_time",
-        value = "_FUNC_() - Returns the current date at the start of query evaluation."
-                + " All calls of current_date within the same query return the same value.")
+        value = "_FUNC_() - a bounch of date_time util functions,minus_day,minus_month,day_first_second.")
 @NDV(maxNdv = 1)
 public class DateTimeUDF extends GenericUDF {
 
     public static final String MINUS_DAY = "minus_day";
     public static final String PLUS_DAY = "plus_day";
+    public static final String MINUS_MONTH = "minus_month";
 
     public static final String DAY_FIRST_SECOND = "day_first_second";
     public static final String DAY_LAST_SECOND = "day_last_second";
@@ -44,6 +48,7 @@ public class DateTimeUDF extends GenericUDF {
     static {
         supportedFunction.add(MINUS_DAY);
         supportedFunction.add(PLUS_DAY);
+        supportedFunction.add(MINUS_MONTH);
         supportedFunction.add(DAY_FIRST_SECOND);
         supportedFunction.add(DAY_LAST_SECOND);
     }
@@ -67,12 +72,7 @@ public class DateTimeUDF extends GenericUDF {
     private DateTime dateTime;
 
     /**
-     * 配置evaluate函数一样,对于length长度为0的情况做特殊处理
-     *
-     * @param objectInspectors objectInspectors[0]:current_date() | current_timestamp()
-     *                         objectInspectors[1]:functions --> minusday,plusday,..,etc
-     *                         objectInspectors[2]:
-     *                         objectInspectors[3]:if formatted to date,true:XXXX-XX-XX false:XXXX-XX-XX XX:XX:XX
+     * 和evaluate函数一样,对于length长度为0的情况做特殊处理
      */
     public ObjectInspector initialize(ObjectInspector[] objectInspectors) throws UDFArgumentException {
         this.objectInspectors = objectInspectors;
@@ -148,7 +148,21 @@ public class DateTimeUDF extends GenericUDF {
         dateTime = dateTime.minusDays(intWritable.get());
     }
 
-    //Usage: select date_time(date_time(current_timestamp(),'minus_day',1),'day_first_second');
+    private void handleMinusMonth(ObjectInspector[] objectInspectors, DeferredObject[] deferredObjects)
+            throws HiveException, UDFArgumentException {
+
+        ObjectInspector intoi = PrimitiveObjectInspectorFactory.getPrimitiveWritableObjectInspector(
+                PrimitiveObjectInspector.PrimitiveCategory.INT);
+        ObjectInspectorConverters.Converter numberConverter = tryGetConverterFrom(objectInspectors[2], intoi);
+        if (numberConverter == null) {
+            throw new UDFArgumentException("third argument must be int!");
+        }
+
+        IntWritable intWritable = (IntWritable) numberConverter.convert(deferredObjects[2].get());
+        dateTime = dateTime.minusMonths(intWritable.get());
+    }
+
+
     private void handleFirstSecond(ObjectInspector[] objectInspectors, DeferredObject[] deferredObjects)
             throws HiveException, UDFArgumentException {
         dateTime = dateTime.hourOfDay().withMinimumValue().millisOfDay().withMinimumValue();
@@ -170,12 +184,16 @@ public class DateTimeUDF extends GenericUDF {
             handleMinusDay(objectInspectors, deferredObjects);
         } else if (functionName.equals(DAY_FIRST_SECOND)) {
             handleFirstSecond(objectInspectors, deferredObjects);
+
         } else if (functionName.equals(DAY_LAST_SECOND)) {
             handleLastSecond(objectInspectors, deferredObjects);
+
+        } else if (functionName.equals(MINUS_MONTH)) {
+            handleMinusMonth(objectInspectors, deferredObjects);
+
         } else {
             throw new HiveException("func: " + functionName + " is not supported!");
         }
-
     }
 
     public Object evaluate(DeferredObject[] deferredObjects) throws HiveException {
