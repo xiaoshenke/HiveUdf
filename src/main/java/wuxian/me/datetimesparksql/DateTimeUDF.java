@@ -21,6 +21,9 @@ import java.sql.Timestamp;
 import java.util.HashSet;
 import java.util.Set;
 
+import static wuxian.me.datetimesparksql.UDFUtil.DATE_TIME_FORMAT;
+import static wuxian.me.datetimesparksql.UDFUtil.tryGetConverterFrom;
+
 /**
  * single function supported:
  * 1 select date_time();
@@ -53,21 +56,8 @@ public class DateTimeUDF extends GenericUDF {
         supportedFunction.add(DAY_LAST_SECOND);
     }
 
-    public static final String DATE_TIME_FORMAT = "yyyy-MM-dd HH:mm:ss";
-    public static final String DATE_FORMAT = "yyyy-MM-dd";
-
 
     private ObjectInspector[] objectInspectors;
-
-    private ObjectInspectorConverters.Converter tryGetConverterFrom(ObjectInspector objectInspector
-            , ObjectInspector compare) {
-        try {
-            return ObjectInspectorConverters.getConverter(objectInspector, compare);
-        } catch (Exception e) {
-
-        }
-        return null;
-    }
 
     private DateTime dateTime;
 

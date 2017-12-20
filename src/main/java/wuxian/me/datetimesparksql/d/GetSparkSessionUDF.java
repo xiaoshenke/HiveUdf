@@ -1,4 +1,4 @@
-package wuxian.me.datetimesparksql;
+package wuxian.me.datetimesparksql.d;
 
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.ql.exec.Description;
