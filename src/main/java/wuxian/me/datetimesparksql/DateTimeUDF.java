@@ -14,8 +14,10 @@ import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory;
 import org.apache.hadoop.io.BooleanWritable;
 import org.apache.hadoop.io.Text;
+import org.datanucleus.util.StringUtils;
 import org.joda.time.DateTime;
 import org.apache.hadoop.io.IntWritable;
+import org.joda.time.format.DateTimeFormat;
 
 import java.sql.Timestamp;
 import java.util.HashSet;
@@ -78,14 +80,46 @@ public class DateTimeUDF extends GenericUDF {
         ObjectInspector timestampOI = PrimitiveObjectInspectorFactory.getPrimitiveWritableObjectInspector(
                 PrimitiveObjectInspector.PrimitiveCategory.TIMESTAMP);
 
+        ObjectInspector stringOI = PrimitiveObjectInspectorFactory.getPrimitiveWritableObjectInspector(
+                PrimitiveObjectInspector.PrimitiveCategory.STRING);
+
         ObjectInspectorConverters.Converter dateConverter = tryGetConverterFrom(objectInspectors[0], dateOI);
         ObjectInspectorConverters.Converter timestampConverter = tryGetConverterFrom(objectInspectors[0], timestampOI);
-        if (dateConverter == null && timestampConverter == null) {
+        ObjectInspectorConverters.Converter stringConverter = tryGetConverterFrom(objectInspectors[0], stringOI);
+
+        if (dateConverter == null && timestampConverter == null && stringConverter == null) {
             throw new UDFArgumentException("first argument must be date or timestamp!");
         }
 
         DateTime dateTime = null;
-        if (timestampConverter != null) {
+
+        if (stringConverter != null) {
+            Text hiveCharWritable = (Text) stringConverter.convert(deferredObjects[0].get());
+            if (hiveCharWritable != null && hiveCharWritable.toString().length() != 0) {
+
+                String time = hiveCharWritable.toString();
+
+                try {
+                    dateTime = DateTimeFormat.forPattern(UDFUtil.DATE_FORMAT).parseDateTime(time);
+                } catch (Exception e) {
+                    ;
+                }
+                if (dateTime == null) {
+                    try {
+                        dateTime = DateTimeFormat.forPattern(UDFUtil.DATE_TIME_FORMAT).parseDateTime(time);
+                    } catch (Exception e) {
+                        ;
+                    }
+                }
+                if (dateTime == null) {
+                    throw new UDFArgumentException("cannot parse date string: " + time + " ,please check out it!");
+                }
+
+            } else {
+                throw new UDFArgumentException("date string is not illegal!");
+            }
+
+        } else if (timestampConverter != null) {
             TimestampWritable timestampWritable = (TimestampWritable) timestampConverter.convert(deferredObjects[0].get());
             dateTime = new DateTime(timestampWritable.getTimestamp().getTime());
 
@@ -118,10 +152,13 @@ public class DateTimeUDF extends GenericUDF {
 
         dateTime = getDateTime(objectInspectors, deferredObjects);
 
-        functionName = getFuncName(objectInspectors, deferredObjects).toString();
-        if (!supportedFunction.contains(functionName)) {
-            throw new HiveException("func: " + functionName + " is not supported!");
+        if (objectInspectors.length >= 2) {
+            functionName = getFuncName(objectInspectors, deferredObjects).toString();
+            if (!supportedFunction.contains(functionName)) {
+                throw new HiveException("func: " + functionName + " is not supported!");
+            }
         }
+
     }
 
     private void handleMinusDay(ObjectInspector[] objectInspectors, DeferredObject[] deferredObjects)
@@ -192,7 +229,10 @@ public class DateTimeUDF extends GenericUDF {
             return new TimestampWritable(Timestamp.valueOf(DateTime.now().toString(DATE_TIME_FORMAT)));
         }
         checkPreservedObjectInspectors(this.objectInspectors, deferredObjects);
-        handleFunction(functionName, objectInspectors, deferredObjects);
+        if (functionName != null) {
+            handleFunction(functionName, objectInspectors, deferredObjects);
+        }
+
         return new TimestampWritable(Timestamp.valueOf(dateTime.toString(DATE_TIME_FORMAT)));
     }
 
