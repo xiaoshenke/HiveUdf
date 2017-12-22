@@ -7,6 +7,11 @@ target
 .idea/libraries
 .idea/artifacts
 .idea/vcs.xml
+src/main/java/wuxian/me/datetimesparksql/GetFireeye*
+src/main/java/wuxian/me/datetimesparksql/GetFireeyeParamUDF.java
+src/main/java/wuxian/me/datetimesparksql/d/*
+src/main/java/wuxian/me/datetimesparksql/d
+src/main/java/wuxian/me/datetimesparksql/GetFireeyeParamUDF.java
 lib
 logs
 conf/log4j*

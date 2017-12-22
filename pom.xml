@@ -94,6 +94,12 @@
             <version>${hadoop.version}</version>
             <optional>true</optional>
         </dependency>
+
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>9.4-1202-jdbc41</version>
+        </dependency>
     </dependencies>
 
 
@@ -132,5 +138,5 @@
             </plugin>
         </plugins>
     </build>
-    
+
 </project>
