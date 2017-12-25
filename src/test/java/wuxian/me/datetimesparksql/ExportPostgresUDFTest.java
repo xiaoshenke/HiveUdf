@@ -11,11 +11,10 @@ public class ExportPostgresUDFTest {
     public void testUDF() {
 
         ExportPostgresUDF udf = new ExportPostgresUDF();
-
         String orginString = "jdbc:xxxxx;user=hello;password=xxx";
         System.out.println("origin: " + orginString);
         try {
-            udf.parse(orginString);
+            PgJdbc.parsePostGresUrl(orginString);
         } catch (Exception e) {
 
         }

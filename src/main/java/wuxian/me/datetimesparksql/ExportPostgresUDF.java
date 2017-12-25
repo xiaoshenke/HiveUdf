@@ -43,16 +43,15 @@ public class ExportPostgresUDF extends GenericUDF {
                 throw new UDFArgumentException("postgres connection url must be constant");
             }
             ConstantObjectInspector propertiesPath = (ConstantObjectInspector) objectInspectors[0];
-            String configPath = propertiesPath.getWritableConstantValue().toString();
+            String pgurl = propertiesPath.getWritableConstantValue().toString();
 
-            parse(configPath);
+            Properties properties = PgJdbc.parsePostGresUrl(pgurl);
 
-            Properties properties = new Properties();
-            properties.setProperty("username", user.substring("username=".length()));
-            properties.setProperty("password", password.substring("password=".length()));
-            properties.setProperty("url", url.substring("url=".length()));
+            this.user = properties.getProperty("username");
+            this.url = properties.getProperty("url");
+            this.password = properties.getProperty("password");
             properties.setProperty("maxActive", String.valueOf(20));
-            properties.setProperty("driverClassName", "org.postgresql.Driver");
+
             try {
                 this.dataSource = BasicDataSourceFactory.createDataSource(properties);
             } catch (Exception e) {
@@ -64,12 +63,12 @@ public class ExportPostgresUDF extends GenericUDF {
         if (objectInspectors[1].getCategory() == ObjectInspector.Category.PRIMITIVE
                 && ((PrimitiveObjectInspector) objectInspectors[1]).getPrimitiveCategory() == PrimitiveObjectInspector.PrimitiveCategory.STRING) {
             if (!(objectInspectors[1] instanceof ConstantObjectInspector)) {
-                throw new UDFArgumentException("the second arg   must be a sql string constant");
+                throw new UDFArgumentException("the second arg must be a sql string constant");
             }
             ConstantObjectInspector sqlInsp = (ConstantObjectInspector) objectInspectors[1];
             this.sql = sqlInsp.getWritableConstantValue().toString();
             if (this.sql == null || this.sql.trim().length() == 0) {
-                throw new UDFArgumentException("the second arg   must be a sql string constant and not nullable");
+                throw new UDFArgumentException("the second arg must be a sql string constant and not nullable");
             }
         }
         paramsInspectors = new PrimitiveObjectInspector[objectInspectors.length - 2];
@@ -98,23 +97,6 @@ public class ExportPostgresUDF extends GenericUDF {
         }
     }
 
-    public void parse(String configPath) throws UDFArgumentException {
-        String reg = "\\s";
-        String[] params = configPath.split(reg);
-
-        for (String param : params) {
-            if (param.startsWith("username=")) {
-                user = param;
-            } else if (param.startsWith("password=")) {
-                password = param;
-            } else if (param.startsWith("url=")) {
-                url = param;
-            }
-        }
-        if (url == null || password == null || user == null) {
-            throw new UDFArgumentException("url or password or user if empty!");
-        }
-    }
 
     public String getUrl() {
         return url;

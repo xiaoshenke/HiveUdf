@@ -71,4 +71,39 @@ public class PgJdbc {
             }
         }
     }
+
+    public static Properties parsePostGresUrl(String urls) throws UDFArgumentException {
+        Properties properties = new Properties();
+
+        if (urls == null || urls.length() == 0) {
+            throw new UDFArgumentException("url is empty!");
+        }
+
+        String url = null;
+        String user = null;
+        String password = null;
+
+        String reg = "\\s";
+        String[] params = urls.split(reg);
+
+        for (String param : params) {
+            if (param.startsWith("username=")) {
+                user = param;
+            } else if (param.startsWith("password=")) {
+                password = param;
+            } else if (param.startsWith("url=")) {
+                url = param;
+            }
+        }
+        if (url == null || password == null || user == null) {
+            throw new UDFArgumentException("url or password or user if empty!");
+        }
+
+        properties.setProperty("username", user.substring("username=".length()));
+        properties.setProperty("password", password.substring("password=".length()));
+        properties.setProperty("url", url.substring("url=".length()));
+        //properties.setProperty("maxActive", String.valueOf(20));
+        properties.setProperty("driverClassName", "org.postgresql.Driver");
+        return properties;
+    }
 }
