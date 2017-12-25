@@ -12,6 +12,7 @@ src/main/java/wuxian/me/datetimesparksql/GetFireeyeParamUDF.java
 src/main/java/wuxian/me/datetimesparksql/d/*
 src/main/java/wuxian/me/datetimesparksql/d
 src/main/java/wuxian/me/datetimesparksql/GetFireeyeParamUDF.java
+src/main/java/wuxian/me/datetimesparksql/d/GetSparkSessionUDF.java
 lib
 logs
 conf/log4j*
