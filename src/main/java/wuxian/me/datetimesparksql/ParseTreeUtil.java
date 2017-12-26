@@ -1,10 +1,12 @@
 package wuxian.me.datetimesparksql;
 
+import org.antlr.runtime.NoViableAltException;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentException;
 import org.apache.hadoop.hive.ql.parse.ASTNode;
 import org.apache.hadoop.hive.ql.lib.Node;
 import org.antlr.runtime.Token;
 import org.apache.hadoop.hive.ql.parse.ParseDriver;
+import org.apache.hadoop.hive.ql.parse.ParseException;
 
 public class ParseTreeUtil {
 
@@ -13,9 +15,15 @@ public class ParseTreeUtil {
             return null;
         }
         ASTNode node = null;
-        ParseDriver pd = new ParseDriver();
+
         try {
+            ParseDriver pd = new ParseDriver();
             node = pd.parse(sql);
+        } catch (ParseException e) {
+
+
+        } catch (ExceptionInInitializerError e) {
+
         } catch (Exception e) {
 
         }

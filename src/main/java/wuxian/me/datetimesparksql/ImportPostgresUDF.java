@@ -21,7 +21,9 @@ import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory;
 import org.apache.hadoop.io.BooleanWritable;
 import org.apache.hadoop.io.Text;
+import scala.tools.cmd.gen.AnyVals;
 
+import java.sql.ResultSet;
 import java.util.Properties;
 
 @UDFType(deterministic = true)
@@ -37,6 +39,7 @@ public class ImportPostgresUDF extends GenericUDF {
     private String password;
     private String sql;
 
+    private boolean ret;
     @Override
     public ObjectInspector initialize(ObjectInspector[] objectInspectors) throws UDFArgumentException {
 
@@ -71,26 +74,26 @@ public class ImportPostgresUDF extends GenericUDF {
             }
         }
 
-        /*
         SessionState state = SessionState.get();
         Driver driver = new Driver(state.getConf());
-        CommandProcessorResponse response = null;
-        String sql = "show databases";
-        try {
-            response = driver.run(sql);
-        } catch (Exception e) {
 
-            throw new UDFArgumentException("execute sql: " + sql + " error!");
+        if (!ImportPostgresUtil.isValidInsertSelectSQL(sql)) {
+            throw new UDFArgumentException("sql not valid!");
         }
-        executeResult = response.toString();
-        */
+
+        String selectSQL = ImportPostgresUtil.getPGSelectSQL(sql);
+        ResultSet resultSet = ImportPostgresUtil.getSelectPGResult(selectSQL);
+        String insertSQL = ImportPostgresUtil.getHiveInsertSQL(sql);
+
+        ret = ImportPostgresUtil.insertHiveTableBy(driver, insertSQL, resultSet);
+
         return PrimitiveObjectInspectorFactory.writableBooleanObjectInspector;
     }
 
-    //Todo
+
     @Override
     public Object evaluate(DeferredObject[] deferredObjects) throws HiveException {
-        return new BooleanWritable(true);
+        return new BooleanWritable(ret);
     }
 
     @Override
