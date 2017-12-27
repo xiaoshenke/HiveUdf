@@ -1,16 +1,9 @@
 package wuxian.me.datetimesparksql;
 
-import org.apache.hadoop.hive.conf.HiveConf;
-import org.apache.hadoop.hive.ql.Context;
 import org.apache.hadoop.hive.ql.Driver;
 import org.apache.hadoop.hive.ql.exec.Description;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentException;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
-import org.apache.hadoop.hive.ql.parse.ASTNode;
-import org.apache.hadoop.hive.ql.parse.BaseSemanticAnalyzer;
-import org.apache.hadoop.hive.ql.parse.ParseDriver;
-import org.apache.hadoop.hive.ql.parse.SemanticAnalyzerFactory;
-import org.apache.hadoop.hive.ql.processors.CommandProcessorResponse;
 import org.apache.hadoop.hive.ql.session.SessionState;
 import org.apache.hadoop.hive.ql.udf.UDFType;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDF;
@@ -20,9 +13,10 @@ import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory;
 import org.apache.hadoop.io.BooleanWritable;
-import org.apache.hadoop.io.Text;
-import scala.tools.cmd.gen.AnyVals;
+import wuxian.me.datetimesparksql.util.ImportPostgresUtil;
+import wuxian.me.datetimesparksql.util.PgJdbc;
 
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.util.Properties;
 
@@ -40,6 +34,7 @@ public class ImportPostgresUDF extends GenericUDF {
     private String sql;
 
     private boolean ret;
+
     @Override
     public ObjectInspector initialize(ObjectInspector[] objectInspectors) throws UDFArgumentException {
 
@@ -74,6 +69,14 @@ public class ImportPostgresUDF extends GenericUDF {
             }
         }
 
+        Connection connection = null;
+        try {
+            PgJdbc.initDriver();
+            connection = PgJdbc.getConnectionBy(this.url, this.username, this.password);
+        } catch (Exception e) {
+            throw new UDFArgumentException("can't connect to postgresql");
+        }
+
         SessionState state = SessionState.get();
         Driver driver = new Driver(state.getConf());
 
@@ -82,11 +85,35 @@ public class ImportPostgresUDF extends GenericUDF {
         }
 
         String selectSQL = ImportPostgresUtil.getPGSelectSQL(sql);
-        ResultSet resultSet = ImportPostgresUtil.getSelectPGResult(selectSQL);
+        ResultSet resultSet = null;
+
+        try {
+            resultSet = ImportPostgresUtil.getSelectPGResult(selectSQL, connection);
+        } catch (Exception e) {
+
+        } finally {
+            try {
+                if (connection != null && !connection.isClosed()) {
+                    connection.close();
+                }
+            } catch (Exception e) {
+            }
+        }
+
         String insertSQL = ImportPostgresUtil.getHiveInsertSQL(sql);
+        try {
+            ret = ImportPostgresUtil.insertHiveTableBy(driver, insertSQL, resultSet);
+        } catch (Exception e) {
 
-        ret = ImportPostgresUtil.insertHiveTableBy(driver, insertSQL, resultSet);
+        } finally {
+            if (resultSet != null) {
+                try {
+                    resultSet.close();
+                } catch (Exception e) {
 
+                }
+            }
+        }
         return PrimitiveObjectInspectorFactory.writableBooleanObjectInspector;
     }
 

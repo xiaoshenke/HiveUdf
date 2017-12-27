@@ -1,8 +1,7 @@
 package wuxian.me.datetimesparksql;
 
 import org.junit.Test;
-
-import static org.junit.Assert.*;
+import wuxian.me.datetimesparksql.util.ParseTreeUtil;
 
 public class ParseTreeUtilTest {
 

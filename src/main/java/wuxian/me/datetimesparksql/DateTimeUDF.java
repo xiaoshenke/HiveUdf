@@ -2,7 +2,6 @@ package wuxian.me.datetimesparksql;
 
 import org.apache.hadoop.hive.ql.exec.Description;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentException;
-import org.apache.hadoop.hive.ql.exec.UDFArgumentLengthException;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.ql.udf.UDFType;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDF;
@@ -12,19 +11,18 @@ import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorConverters;
 import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory;
-import org.apache.hadoop.io.BooleanWritable;
 import org.apache.hadoop.io.Text;
-import org.datanucleus.util.StringUtils;
 import org.joda.time.DateTime;
 import org.apache.hadoop.io.IntWritable;
 import org.joda.time.format.DateTimeFormat;
+import wuxian.me.datetimesparksql.util.UDFUtil;
 
 import java.sql.Timestamp;
 import java.util.HashSet;
 import java.util.Set;
 
-import static wuxian.me.datetimesparksql.UDFUtil.DATE_TIME_FORMAT;
-import static wuxian.me.datetimesparksql.UDFUtil.tryGetConverterFrom;
+import static wuxian.me.datetimesparksql.util.UDFUtil.DATE_TIME_FORMAT;
+import static wuxian.me.datetimesparksql.util.UDFUtil.tryGetConverterFrom;
 
 /**
  * single function supported:

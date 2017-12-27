@@ -13,6 +13,7 @@ import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory;
 import org.apache.hadoop.io.BooleanWritable;
+import wuxian.me.datetimesparksql.util.PgJdbc;
 
 import javax.sql.DataSource;
 import java.io.IOException;

@@ -1,4 +1,4 @@
-package wuxian.me.datetimesparksql;
+package wuxian.me.datetimesparksql.util;
 
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorConverters;

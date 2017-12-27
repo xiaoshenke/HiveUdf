@@ -1,4 +1,4 @@
-package wuxian.me.datetimesparksql;
+package wuxian.me.datetimesparksql.util;
 
 import org.apache.hadoop.hive.ql.exec.UDFArgumentException;
 import org.apache.hadoop.hive.ql.parse.ASTNode;
@@ -6,10 +6,9 @@ import org.apache.hadoop.hive.ql.parse.HiveParser;
 import org.apache.hadoop.hive.ql.Driver;
 import org.apache.hadoop.hive.ql.processors.CommandProcessorResponse;
 
-import java.sql.ResultSet;
+import java.sql.*;
 
 import static org.apache.hadoop.hive.ql.parse.BaseSemanticAnalyzer.getQualifiedTableName;
-import static org.apache.hadoop.hive.ql.parse.BaseSemanticAnalyzer.readProps;
 
 public class ImportPostgresUtil {
 
@@ -55,19 +54,38 @@ public class ImportPostgresUtil {
         return true;
     }
 
-    //Todo
-    public static boolean insertHiveTableBy(Driver driver, String insertSql, ResultSet resultSet) {
+
+    //Todo: 这里可能会出bug pg的type和hive的type是否不兼容？
+    public static String combineSql(String insertSql, ResultSetMetaData metaData, ResultSet resultSet) throws SQLException {
+        StringBuilder builder = new StringBuilder(insertSql + " values(");
+        for (int i = 1; i <= metaData.getColumnCount(); i++) {
+            if (metaData.getColumnClassName(i).equalsIgnoreCase("java.String")) {
+                builder.append("'" + resultSet.getString(i) + "'");
+            } else {
+                builder.append(resultSet.getString(i));  //string is safe
+            }
+            if (i + 1 <= metaData.getColumnCount()) {
+                builder.append(",");
+            }
+        }
+        builder.append(");");
+        return builder.toString();
+    }
+
+    public static boolean insertHiveTableBy(Driver driver, String insertSql, ResultSet resultSet) throws SQLException {
         if (driver == null || insertSql == null || insertSql.length() == 0 || resultSet == null) {
             return false;
         }
+        ResultSetMetaData metaData = resultSet.getMetaData();
         CommandProcessorResponse response = null;
-        String sql = "show databases"; //Todo:组合一下sql 然后循环执行
-        try {
-            response = driver.run(sql);
-        } catch (Exception e) {
-            return false;
+        while (resultSet.next()) {
+            String sql = combineSql(insertSql, metaData, resultSet);
+            try {
+                response = driver.run(sql);
+            } catch (Exception e) {
+                return false;
+            }
         }
-
         return true;
     }
 
@@ -97,10 +115,13 @@ public class ImportPostgresUtil {
         }
     }
 
-
-    //Todo
-    public static ResultSet getSelectPGResult(String selectSQL) throws UDFArgumentException {
-        return null;
+    public static ResultSet getSelectPGResult(String selectSQL, Connection connection) throws UDFArgumentException, SQLException {
+        PreparedStatement pstmt = connection.prepareStatement(selectSQL);
+        ResultSet resultSet = pstmt.executeQuery();
+        if (pstmt != null) {
+            pstmt.close();
+        }
+        return resultSet;
     }
 
     public static String getPGSelectSQL(String sql) throws UDFArgumentException {
@@ -127,6 +148,5 @@ public class ImportPostgresUtil {
         String selectSql = sql.substring(0, selectIndex);
         return selectSql;
     }
-
 
 }

@@ -1,6 +1,5 @@
-package wuxian.me.datetimesparksql;
+package wuxian.me.datetimesparksql.util;
 
-import org.antlr.runtime.NoViableAltException;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentException;
 import org.apache.hadoop.hive.ql.parse.ASTNode;
 import org.apache.hadoop.hive.ql.lib.Node;

@@ -1,9 +1,7 @@
 package wuxian.me.datetimesparksql;
 
-import org.apache.avro.TestAnnotation;
 import org.junit.Test;
-
-import static org.junit.Assert.*;
+import wuxian.me.datetimesparksql.util.PgJdbc;
 
 public class ExportPostgresUDFTest {
 

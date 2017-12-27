@@ -1,4 +1,4 @@
-package wuxian.me.datetimesparksql;
+package wuxian.me.datetimesparksql.util;
 
 import org.apache.hadoop.hive.ql.exec.UDFArgumentException;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
@@ -24,7 +24,6 @@ public class PgJdbc {
             throw new HiveException("postgres driver init error");
         }
     }
-
     public static Map<String, Connection> connectionMap = new HashMap<>();
 
     public static Connection getConnectionBy(String url, String username, String password) throws HiveException {
