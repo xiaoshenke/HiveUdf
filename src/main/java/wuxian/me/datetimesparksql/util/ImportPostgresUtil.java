@@ -72,6 +72,18 @@ public class ImportPostgresUtil {
         return builder.toString();
     }
 
+    public static boolean executeSQL(Driver driver, String sql) {
+        if (driver == null || sql == null || sql.length() == 0) {
+            return false;
+        }
+        try {
+            driver.run(sql);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     public static boolean insertHiveTableBy(Driver driver, String insertSql, ResultSet resultSet) throws SQLException {
         if (driver == null || insertSql == null || insertSql.length() == 0 || resultSet == null) {
             return false;
@@ -80,6 +92,8 @@ public class ImportPostgresUtil {
         CommandProcessorResponse response = null;
         while (resultSet.next()) {
             String sql = combineSql(insertSql, metaData, resultSet);
+
+            System.out.println("try execute hive-insert-sql: " + sql);
             try {
                 response = driver.run(sql);
             } catch (Exception e) {

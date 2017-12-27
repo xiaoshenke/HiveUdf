@@ -27,16 +27,21 @@ import java.util.Properties;
 @NDV(maxNdv = 1)
 public class ImportPostgresUDF extends GenericUDF {
 
+    private static boolean debug = true;
+
     private String executeResult;
     private String url;
     private String username;
     private String password;
     private String sql;
-
     private boolean ret;
 
     @Override
     public ObjectInspector initialize(ObjectInspector[] objectInspectors) throws UDFArgumentException {
+        if (debug) {
+            new DebugUtil(SessionState.get()).debug();
+            return PrimitiveObjectInspectorFactory.writableBooleanObjectInspector;
+        }
 
         if (objectInspectors.length < 2) {
             throw new UDFArgumentException(" Expecting  at least two arguments ");
@@ -55,6 +60,8 @@ public class ImportPostgresUDF extends GenericUDF {
             this.url = properties.getProperty("url");
             this.username = properties.getProperty("username");
             this.password = properties.getProperty("password");
+
+            System.out.println("PARAM url: " + url + " username: " + username + " password:" + password);
         }
 
         if (objectInspectors[1].getCategory() == ObjectInspector.Category.PRIMITIVE
@@ -67,8 +74,11 @@ public class ImportPostgresUDF extends GenericUDF {
             if (this.sql == null || this.sql.trim().length() == 0) {
                 throw new UDFArgumentException("second arg must be a sql string constant and not nullable");
             }
+
+            System.out.println("PARAM sql: " + sql);
         }
 
+        System.out.println("try connect to postgres");
         Connection connection = null;
         try {
             PgJdbc.initDriver();
@@ -76,17 +86,21 @@ public class ImportPostgresUDF extends GenericUDF {
         } catch (Exception e) {
             throw new UDFArgumentException("can't connect to postgresql");
         }
+        System.out.println("connect to postgres success");
 
+        System.out.println("try init hive driver");
         SessionState state = SessionState.get();
         Driver driver = new Driver(state.getConf());
+        System.out.println("init hive driver success");
 
         if (!ImportPostgresUtil.isValidInsertSelectSQL(sql)) {
             throw new UDFArgumentException("sql not valid!");
         }
 
+        System.out.println("sql is a valid insert-into-select sql");
+
         String selectSQL = ImportPostgresUtil.getPGSelectSQL(sql);
         ResultSet resultSet = null;
-
         try {
             resultSet = ImportPostgresUtil.getSelectPGResult(selectSQL, connection);
         } catch (Exception e) {
@@ -100,7 +114,14 @@ public class ImportPostgresUDF extends GenericUDF {
             }
         }
 
+        try {
+            System.out.println("selectClauser: " + selectSQL + " return resultSet size: " + resultSet.getFetchSize());
+        } catch (Exception e) {
+
+        }
+
         String insertSQL = ImportPostgresUtil.getHiveInsertSQL(sql);
+
         try {
             ret = ImportPostgresUtil.insertHiveTableBy(driver, insertSQL, resultSet);
         } catch (Exception e) {

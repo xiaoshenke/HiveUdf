@@ -20,10 +20,13 @@ public class ParseTreeUtil {
             node = pd.parse(sql);
         } catch (ParseException e) {
 
+            e.printStackTrace();
 
         } catch (ExceptionInInitializerError e) {
+            e.printStackTrace();
 
         } catch (Exception e) {
+            e.printStackTrace();
 
         }
         return node;

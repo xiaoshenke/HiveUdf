@@ -9,8 +9,8 @@ public class ParseTreeUtilTest {
     public void testParsing() throws Exception {
 
         ///ParseTreeUtil.parseAndPrint("select * from abc");
+        ParseTreeUtil.parseAndPrint("insert into test.user select * from wuxian.test_table_user where id=1");
 
-        ParseTreeUtil.parseAndPrint("insert into hive.table1 select col1,to_date(col3) as col2 from pg.table2");
     }
 
 
