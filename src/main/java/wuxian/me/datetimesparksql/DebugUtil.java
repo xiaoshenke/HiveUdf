@@ -3,12 +3,14 @@ package wuxian.me.datetimesparksql;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.metastore.api.FieldSchema;
 import org.apache.hadoop.hive.ql.Driver;
+import org.apache.hadoop.hive.ql.metadata.Hive;
 import org.apache.hadoop.hive.ql.processors.CommandProcessor;
 import org.apache.hadoop.hive.ql.processors.CommandProcessorFactory;
 import org.apache.hadoop.hive.ql.processors.CommandProcessorResponse;
 import org.apache.hadoop.hive.ql.session.SessionState;
 import org.apache.hive.common.util.HiveStringUtils;
 import wuxian.me.datetimesparksql.util.ImportPostgresUtil;
+import org.apache.hadoop.hive.cli.*;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -22,19 +24,57 @@ public class DebugUtil {
         this.sessionState = sessionState;
     }
 
-    private Driver driver;
-
     public void debug() {
-        //driver = new Driver(sessionState.getConf());
-        //System.out.println("driver: " + driver.toString());
-
         System.out.println("----------------------debug begin------------------------");
+
+        //debugWithDriver();
+
+        //debugWithHiveInterface();
+
+        //debugWithCliDriver();
+
+        debugWithHiveConf();
+    }
+
+    private void debugWithHiveConf() {
+        HiveConf hiveConf = sessionState.getConf();
+        String msUri = hiveConf.getVar(HiveConf.ConfVars.METASTOREURIS);
+        System.out.println("msUri: " + msUri);  //bingo!
+    }
+
+    private void debugWithHiveInterface() {
+
+        //Configuration: core-default.xml, core-site.xml, mapred-default.xml, mapred-site.xml, yarn-default.xml, yarn-site.xml, hdfs-default.xml, hdfs-site.xml,
+        // org.apache.hadoop.hive.conf.LoopingByteArrayInputStream@2eae8e6e, file:/root/tmp/spark-2.2.0/conf/hive-site.xml
+        System.out.println("HiveConf: " + sessionState.getConf().toString());
+
+        try {
+            Hive hive = Hive.get(sessionState.getConf());
+            List<String> list = hive.getAllDatabases();
+            System.out.println(list.toString());
+
+        } catch (Exception e) {
+            System.out.println("Exception: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+    }
+
+    private void debugWithCliDriver() {
+        CliDriver cliDriver = new CliDriver();
+        String sql = "use test";
+        System.out.println("------------------begin to execute " + sql + "------------------------");
+        cliDriver.processCmd(sql);
+        System.out.println("------------------end------------------------");
+
+    }
+
+    private void debugWithDriver() {
         try {
             executeSQL("show databases");
         } catch (Exception e) {
 
         }
-
     }
 
     private String[] tokenizeCmd(String cmd) {
@@ -45,23 +85,20 @@ public class DebugUtil {
         if (sql == null || sql.length() == 0) {
             return false;
         }
-
         String[] tokens = tokenizeCmd(sql);
         CommandProcessor proc = CommandProcessorFactory.get(tokens, (HiveConf) sessionState.getConf());
-
         if (proc == null) {
             System.out.println("executeSQL,proc is null");
             return false;
         }
 
         if (proc instanceof Driver) {
-            driver = (Driver) proc;
+            Driver driver = (Driver) proc;
 
             CommandProcessorResponse response = null;
             try {
                 System.out.println("------------------begin to execute " + sql + "------------------------");
                 response = driver.run(sql);
-
                 System.out.println("--------------------print header!----------------------");
                 printHeader(driver, System.out);
                 ArrayList<String> res = new ArrayList<String>();
@@ -70,13 +107,8 @@ public class DebugUtil {
                     for (String r : res) {
                         System.out.println(r);
                     }
-                    //                 counter += res.size();
                     res.clear();
-                    //                if (out.checkError()) {
-                    //                       break;
-                    //                     }
                 }
-
                 System.out.println("execute response, SQLState: " + response.getSQLState()
                         + " schema: " + response.getSchema() + " responseCode: " + response.getResponseCode());
                 //execute response, SQLState: null schema: null responseCode: 0
