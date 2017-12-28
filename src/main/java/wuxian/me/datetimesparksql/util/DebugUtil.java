@@ -1,4 +1,6 @@
-package wuxian.me.datetimesparksql;
+package wuxian.me.datetimesparksql.util;
+
+import org.apache.hadoop.conf.Configuration;
 
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.metastore.api.FieldSchema;
@@ -33,7 +35,17 @@ public class DebugUtil {
 
         //debugWithCliDriver();
 
-        debugWithHiveConf();
+        //debugWithHiveConf();
+
+        debugWithMetastore();
+    }
+
+    private void debugWithMetastore() {
+        Configuration configuration = MetastoreConf.newMetastoreConf();
+        HiveConf hiveConf = sessionState.getConf();
+        hiveConf = new HiveConf(configuration, HiveConf.class);
+        debugWithHiveInterface(hiveConf);
+        //Configuration metastoreConf = MetastoreConf.newMetastoreConf();
     }
 
     private void debugWithHiveConf() {
@@ -42,14 +54,12 @@ public class DebugUtil {
         System.out.println("msUri: " + msUri);  //bingo!
     }
 
-    private void debugWithHiveInterface() {
-
+    private void debugWithHiveInterface(HiveConf hiveConf) {
         //Configuration: core-default.xml, core-site.xml, mapred-default.xml, mapred-site.xml, yarn-default.xml, yarn-site.xml, hdfs-default.xml, hdfs-site.xml,
         // org.apache.hadoop.hive.conf.LoopingByteArrayInputStream@2eae8e6e, file:/root/tmp/spark-2.2.0/conf/hive-site.xml
         System.out.println("HiveConf: " + sessionState.getConf().toString());
-
         try {
-            Hive hive = Hive.get(sessionState.getConf());
+            Hive hive = Hive.get(hiveConf);
             List<String> list = hive.getAllDatabases();
             System.out.println(list.toString());
 
