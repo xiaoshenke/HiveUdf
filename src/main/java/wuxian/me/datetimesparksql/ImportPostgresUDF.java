@@ -1,5 +1,7 @@
 package wuxian.me.datetimesparksql;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.ql.Driver;
 import org.apache.hadoop.hive.ql.exec.Description;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentException;
@@ -15,6 +17,7 @@ import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectIn
 import org.apache.hadoop.io.BooleanWritable;
 import wuxian.me.datetimesparksql.util.DebugUtil;
 import wuxian.me.datetimesparksql.util.ImportPostgresUtil;
+import wuxian.me.datetimesparksql.util.MetastoreConf;
 import wuxian.me.datetimesparksql.util.PgJdbc;
 
 import java.sql.Connection;
@@ -28,83 +31,127 @@ import java.util.Properties;
 @NDV(maxNdv = 1)
 public class ImportPostgresUDF extends GenericUDF {
 
-    private static boolean debug = true;
-
-    private String executeResult;
-    private String url;
-    private String username;
-    private String password;
     private String sql;
     private boolean ret;
 
+    private Connection connection;
+
+    private void initPostgresConnection(ObjectInspector objectInspector) throws UDFArgumentException {
+
+        if (objectInspector.getCategory() == ObjectInspector.Category.PRIMITIVE
+                && ((PrimitiveObjectInspector) objectInspector).getPrimitiveCategory() == PrimitiveObjectInspector.PrimitiveCategory.STRING) {
+            if (!(objectInspector instanceof ConstantObjectInspector)) {
+                throw new UDFArgumentException("postgres connection url must be constant");
+            }
+            ConstantObjectInspector propertiesPath = (ConstantObjectInspector) objectInspector;
+            String pgurl = propertiesPath.getWritableConstantValue().toString();
+
+            Properties properties = PgJdbc.parsePostGresUrl(pgurl);
+            String url = properties.getProperty("url");
+            String username = properties.getProperty("username");
+            String password = properties.getProperty("password");
+
+            System.out.println("try connect to postgres");
+            try {
+                PgJdbc.initDriver();
+                connection = PgJdbc.getConnectionBy(url, username, password);
+            } catch (Exception e) {
+                throw new UDFArgumentException("can't connect to postgresql");
+            }
+            System.out.println("connect to postgres success");
+        } else {
+            throw new UDFArgumentException("not valid connection url");
+        }
+    }
+
+    private String database;
+    private String schema;
+
+    //Todo left join schema.table...
+    private void getInsertSelectString(ObjectInspector objectInspector) throws UDFArgumentException {
+
+        if (objectInspector.getCategory() == ObjectInspector.Category.PRIMITIVE
+                && ((PrimitiveObjectInspector) objectInspector).getPrimitiveCategory() == PrimitiveObjectInspector.PrimitiveCategory.STRING) {
+            if (!(objectInspector instanceof ConstantObjectInspector)) {
+                throw new UDFArgumentException("arg must be a sql string constant");
+            }
+            ConstantObjectInspector sqlInsp = (ConstantObjectInspector) objectInspector;
+            String originSql = sqlInsp.getWritableConstantValue().toString();
+            if (originSql == null || originSql.trim().length() == 0) {
+                throw new UDFArgumentException("arg must be a sql string constant and not nullable");
+            }
+
+            String insertIntoSql = ImportPostgresUtil.getInsertIntoString(originSql);
+            if (insertIntoSql == null) {
+                throw new UDFArgumentException("invalid sql string!");
+            }
+
+            //System.out.println("insertIntoSql: " + insertIntoSql);
+            String databaseDot = ImportPostgresUtil.getDatabaseDot(insertIntoSql);
+            if (databaseDot == null) {
+                throw new UDFArgumentException("invalid sql string!");
+            }
+
+            String schemaDot = ImportPostgresUtil.getSchemaDot(originSql);
+            if (schemaDot != null) {
+                this.schema = schemaDot.substring(0, schemaDot.length() - 1);
+            }
+
+            int index = originSql.indexOf(databaseDot);
+            StringBuilder builder = new StringBuilder("");
+            builder.append(originSql.substring(0, index));
+
+            if (schemaDot != null) {
+                int schIndex = originSql.indexOf(schemaDot);
+                builder.append(originSql.substring(index + databaseDot.length(), schIndex));
+                //builder.append(schemaDot);
+                builder.append(originSql.substring(schIndex + schemaDot.length()));
+            } else {
+                builder.append(originSql.substring(index + databaseDot.length()));
+            }
+
+            this.sql = builder.toString();
+            String hiveDatabase = databaseDot.substring(0, databaseDot.length() - 1);
+            this.database = hiveDatabase;
+
+            System.out.println("hiveDb: " + hiveDatabase + " ,formatted sql: " + sql);
+
+        } else {
+            throw new UDFArgumentException("not a valid insert-select sql string");
+        }
+    }
+
     @Override
     public ObjectInspector initialize(ObjectInspector[] objectInspectors) throws UDFArgumentException {
-        if (debug) {
-            new DebugUtil(SessionState.get()).debug(objectInspectors);
-            return PrimitiveObjectInspectorFactory.writableBooleanObjectInspector;
-        }
-
         if (objectInspectors.length < 2) {
             throw new UDFArgumentException(" Expecting  at least two arguments ");
         }
 
-        if (objectInspectors[0].getCategory() == ObjectInspector.Category.PRIMITIVE
-                && ((PrimitiveObjectInspector) objectInspectors[0]).getPrimitiveCategory() == PrimitiveObjectInspector.PrimitiveCategory.STRING) {
-            if (!(objectInspectors[0] instanceof ConstantObjectInspector)) {
-                throw new UDFArgumentException("postgres connection url must be constant");
-            }
-            ConstantObjectInspector propertiesPath = (ConstantObjectInspector) objectInspectors[0];
-            String pgurl = propertiesPath.getWritableConstantValue().toString();
+        //1 get Insert-Into-Select sql
+        getInsertSelectString(objectInspectors[1]);
 
-            Properties properties = PgJdbc.parsePostGresUrl(pgurl);
-
-            this.url = properties.getProperty("url");
-            this.username = properties.getProperty("username");
-            this.password = properties.getProperty("password");
-
-            System.out.println("PARAM url: " + url + " username: " + username + " password:" + password);
-        }
-
-        if (objectInspectors[1].getCategory() == ObjectInspector.Category.PRIMITIVE
-                && ((PrimitiveObjectInspector) objectInspectors[1]).getPrimitiveCategory() == PrimitiveObjectInspector.PrimitiveCategory.STRING) {
-            if (!(objectInspectors[1] instanceof ConstantObjectInspector)) {
-                throw new UDFArgumentException("second arg must be a sql string constant");
-            }
-            ConstantObjectInspector sqlInsp = (ConstantObjectInspector) objectInspectors[1];
-            this.sql = sqlInsp.getWritableConstantValue().toString();
-            if (this.sql == null || this.sql.trim().length() == 0) {
-                throw new UDFArgumentException("second arg must be a sql string constant and not nullable");
-            }
-
-            System.out.println("PARAM sql: " + sql);
-        }
-
-        System.out.println("try connect to postgres");
-        Connection connection = null;
-        try {
-            PgJdbc.initDriver();
-            connection = PgJdbc.getConnectionBy(this.url, this.username, this.password);
-        } catch (Exception e) {
-            throw new UDFArgumentException("can't connect to postgresql");
-        }
-        System.out.println("connect to postgres success");
-
-        System.out.println("try init hive driver");
-        SessionState state = SessionState.get();
-        Driver driver = new Driver(state.getConf());
-        System.out.println("init hive driver success");
-
-        if (!ImportPostgresUtil.isValidInsertSelectSQL(sql)) {
+        //2 check sql
+        if (false && !ImportPostgresUtil.isValidInsertSelectSQL(sql)) { //Fixme:
             throw new UDFArgumentException("sql not valid!");
         }
 
-        System.out.println("sql is a valid insert-into-select sql");
+        //3 check driver
+        Configuration configuration = MetastoreConf.newMetastoreConf();
+        HiveConf hiveConf = new HiveConf(configuration, HiveConf.class);
+        Driver driver = new Driver(hiveConf);
 
-        String selectSQL = ImportPostgresUtil.getPGSelectSQL(sql);
+        //4 check postgres connection
+        initPostgresConnection(objectInspectors[0]);
+
+        //5 import postgres data
+        String selectSQL = ImportPostgresUtil.getPGSelectSQL(sql, schema);
+        System.out.println("pg select sql: " + selectSQL);
         ResultSet resultSet = null;
         try {
             resultSet = ImportPostgresUtil.getSelectPGResult(selectSQL, connection);
         } catch (Exception e) {
+            e.printStackTrace();
+            System.out.println("Exception: " + e.getMessage());
 
         } finally {
             try {
@@ -115,16 +162,11 @@ public class ImportPostgresUDF extends GenericUDF {
             }
         }
 
+        //6 insert to hive
+        String insertSQL = ImportPostgresUtil.getHiveInsertSQL(sql, database);
         try {
-            System.out.println("selectClauser: " + selectSQL + " return resultSet size: " + resultSet.getFetchSize());
-        } catch (Exception e) {
-
-        }
-
-        String insertSQL = ImportPostgresUtil.getHiveInsertSQL(sql);
-
-        try {
-            ret = ImportPostgresUtil.insertHiveTableBy(driver, insertSQL, resultSet);
+            //ImportPostgresUtil.useHiveDatabase(driver, database);
+            ret = ImportPostgresUtil.insertHiveTableBy(driver, insertSQL, resultSet, database);
         } catch (Exception e) {
 
         } finally {

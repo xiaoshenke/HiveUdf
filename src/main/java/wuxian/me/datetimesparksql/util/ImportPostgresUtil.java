@@ -1,12 +1,16 @@
 package wuxian.me.datetimesparksql.util;
 
+import com.sun.istack.Nullable;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentException;
 import org.apache.hadoop.hive.ql.parse.ASTNode;
 import org.apache.hadoop.hive.ql.parse.HiveParser;
 import org.apache.hadoop.hive.ql.Driver;
 import org.apache.hadoop.hive.ql.processors.CommandProcessorResponse;
+import org.apache.hadoop.yarn.webapp.hamlet.Hamlet;
 
 import java.sql.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.apache.hadoop.hive.ql.parse.BaseSemanticAnalyzer.getQualifiedTableName;
 
@@ -17,10 +21,10 @@ public class ImportPostgresUtil {
 
     //current only support
     //insert into hive.table1 select * from postgres.table2;
-    //Todo:
     //1 select子句的column数量和insert into子句的column数量是否相同
     //2 select子句的所有column类型和insert into子句的所有column类型是否相同 --> 目前从编译阶段检查比较困难,因此先弱化成运行时检查
     public static boolean isValidInsertSelectSQL(String sql) {
+        System.out.println("isValidInsertSelectSQL: " + sql);
         try {
             ASTNode tree = ParseTreeUtil.genASTNodeFrom(sql);
             if (tree == null) {
@@ -84,17 +88,34 @@ public class ImportPostgresUtil {
         }
     }
 
-    public static boolean insertHiveTableBy(Driver driver, String insertSql, ResultSet resultSet) throws SQLException {
+    public static boolean useHiveDatabase(Driver driver, String database) throws SQLException {
+        if (driver == null || database == null) {
+            return false;
+        }
+        try {
+            driver.run("use " + database);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+
+    public static boolean insertHiveTableBy(Driver driver, String insertSql, ResultSet resultSet, String database) throws SQLException {
         if (driver == null || insertSql == null || insertSql.length() == 0 || resultSet == null) {
             return false;
         }
         ResultSetMetaData metaData = resultSet.getMetaData();
         CommandProcessorResponse response = null;
+
         while (resultSet.next()) {
             String sql = combineSql(insertSql, metaData, resultSet);
 
-            System.out.println("try execute hive-insert-sql: " + sql);
             try {
+                //driver.run("source 12345" );
+                System.out.println("execute use " + database);
+                driver.run("use " + database);
+                System.out.println("try execute hive-insert-sql: " + sql);
                 response = driver.run(sql);
             } catch (Exception e) {
                 return false;
@@ -129,16 +150,66 @@ public class ImportPostgresUtil {
         }
     }
 
+    private static final String INSERT_INTO_REG = "insert\\s*into\\s*[a-z0-9A-Z]*[.][a-z0-9A-Z]*";
+    private static final Pattern INSERT_INTO_PATTERN = Pattern.compile(INSERT_INTO_REG);
+
+    private static final String INSERT_INTO_REG_3 = "into\\s*";
+    private static final Pattern INSERT_INTO_PATTERN_3 = Pattern.compile(INSERT_INTO_REG_3);
+
+
+    private static final String DATABASE_REG = "[a-z0-9A-Z]*[.]";
+    private static final Pattern DATABASE_PATTERN = Pattern.compile(DATABASE_REG);
+
+    private static final String SCHEMA_REG = "from\\s*[a-z0-9A-Z]*[.][a-z0-9A-Z]*";
+    private static final Pattern SCHEMA_PATTERN = Pattern.compile(SCHEMA_REG);
+    private static final String SCHEMA_REG_2 = "[a-z0-9A-Z]*[.]";
+    private static final Pattern SCHEMA_PATTERN_2 = Pattern.compile(SCHEMA_REG_2);
+
+    private static final String SCHEMA_REG_3 = "from\\s*";
+    private static final Pattern SCHEMA_PATTERN_3 = Pattern.compile(SCHEMA_REG_3);
+
+    @Nullable
+    public static String getInsertIntoString(String origin) {
+        Matcher matcher = INSERT_INTO_PATTERN.matcher(origin.toLowerCase());
+        if (matcher.find()) {
+            return matcher.group();
+        }
+        return null;
+    }
+
+    @Nullable
+    //返回null说明是没有schema的 for Postgres.Schema
+    public static String getSchemaDot(String origin) {
+        Matcher matcher = SCHEMA_PATTERN.matcher(origin.toLowerCase());
+        if (matcher.find()) {
+            String schema = matcher.group();
+            Matcher matcher1 = SCHEMA_PATTERN_2.matcher(schema);
+            if (matcher1.find()) {
+                return matcher1.group();
+            }
+        }
+        return null;
+    }
+
+    public static String getDatabaseDot(String origin) {
+        Matcher matcher = DATABASE_PATTERN.matcher(origin);
+        if (matcher.find()) {
+            return matcher.group();
+        }
+        return null;
+    }
+
+
     public static ResultSet getSelectPGResult(String selectSQL, Connection connection) throws UDFArgumentException, SQLException {
         PreparedStatement pstmt = connection.prepareStatement(selectSQL);
         ResultSet resultSet = pstmt.executeQuery();
         if (pstmt != null) {
-            pstmt.close();
+            //pstmt.close();
         }
         return resultSet;
     }
 
-    public static String getPGSelectSQL(String sql) throws UDFArgumentException {
+    public static String getPGSelectSQL(String sql, @Nullable String schema) throws UDFArgumentException {
         if (sql == null || sql.length() == 0) {
             throw new UDFArgumentException("not a valid query sql!");
         }
@@ -147,11 +218,22 @@ public class ImportPostgresUtil {
             throw new UDFArgumentException("not a valid query sql!");
         }
         String selectSql = sql.substring(selectIndex, sql.length());
+
+        if (schema != null && schema.length() != 0) {
+            Matcher matcher = SCHEMA_PATTERN_3.matcher(selectSql);
+            if (matcher.find()) {
+                StringBuilder builder = new StringBuilder(selectSql.substring(0, matcher.end()));
+                builder.append(schema + ".");
+                builder.append(selectSql.substring(matcher.end()));
+                selectSql = builder.toString();
+            }
+        }
+
         return selectSql;
     }
 
     //insert into hive.tablen (col1,col2,xxx) or insert into hive.tablen
-    public static String getHiveInsertSQL(String sql) throws UDFArgumentException {
+    public static String getHiveInsertSQL(String sql, String schema) throws UDFArgumentException {
         if (sql == null || sql.length() == 0) {
             throw new UDFArgumentException("not a valid query sql!");
         }
@@ -160,6 +242,17 @@ public class ImportPostgresUtil {
             throw new UDFArgumentException("not a valid query sql!");
         }
         String selectSql = sql.substring(0, selectIndex);
+
+        if (schema != null && schema.length() != 0) {
+            Matcher matcher = INSERT_INTO_PATTERN_3.matcher(selectSql);
+            if (matcher.find() && false) { //Fixme
+                StringBuilder builder = new StringBuilder(selectSql.substring(0, matcher.end()));
+                builder.append(schema + ".");
+                builder.append(selectSql.substring(matcher.end()));
+                selectSql = builder.toString();
+            }
+        }
+
         return selectSql;
     }
 
