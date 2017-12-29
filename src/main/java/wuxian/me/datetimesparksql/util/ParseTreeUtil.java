@@ -19,15 +19,11 @@ public class ParseTreeUtil {
             ParseDriver pd = new ParseDriver();
             node = pd.parse(sql);
         } catch (ParseException e) {
-
             e.printStackTrace();
-
         } catch (ExceptionInInitializerError e) {
             e.printStackTrace();
-
         } catch (Exception e) {
             e.printStackTrace();
-
         }
         return node;
     }

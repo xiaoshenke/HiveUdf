@@ -40,7 +40,7 @@ public class ImportPostgresUDF extends GenericUDF {
     @Override
     public ObjectInspector initialize(ObjectInspector[] objectInspectors) throws UDFArgumentException {
         if (debug) {
-            new DebugUtil(SessionState.get()).debug();
+            new DebugUtil(SessionState.get()).debug(objectInspectors);
             return PrimitiveObjectInspectorFactory.writableBooleanObjectInspector;
         }
 
