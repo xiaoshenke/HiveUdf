@@ -131,6 +131,16 @@ public class DebugUtil {
         }
     }
 
+    private boolean executeSQLWithCliDriver(HiveConf hiveConf, String sql) {
+        if (sql == null || sql.length() == 0) {
+            return false;
+        }
+        CliDriver driver = new CliDriver(); //Todo:利用反射把setConf()暴力改成public的？？
+        //driver.
+        return true;
+
+    }
+
 
     private boolean executeSQLWithDriver(HiveConf hiveConf, String sql) {
         if (sql == null || sql.length() == 0) {
