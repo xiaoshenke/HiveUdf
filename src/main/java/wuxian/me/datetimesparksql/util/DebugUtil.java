@@ -17,7 +17,10 @@ import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector;
 import org.apache.hadoop.hive.cli.*;
 
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -85,8 +88,32 @@ public class DebugUtil {
             return;
         }
 
-        executeSQLWithDriver(hiveConf, originSql);
+        debugWithInvokeProcess(originSql);
+        //executeSQLWithDriver(hiveConf, originSql);
         //debugFormatString(originSql);
+    }
+
+    private void debugWithInvokeProcess(String originSql) throws UDFArgumentException {
+
+        ProcessBuilder processBuilder = null;
+        processBuilder = new ProcessBuilder("hive", "-e", originSql);
+        try {
+            Process p = processBuilder.start();
+            p.waitFor();
+
+            final InputStream is = p.getInputStream();
+            final java.io.BufferedReader reader =
+                    new java.io.BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
+            String line = null;
+            while ((line = reader.readLine()) != null) {
+                System.out.println(line);
+            }
+            is.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+
     }
 
     private void debugFormatString(String originSql) throws UDFArgumentException {

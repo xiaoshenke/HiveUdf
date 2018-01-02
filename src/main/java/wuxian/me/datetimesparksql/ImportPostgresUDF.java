@@ -1,8 +1,5 @@
 package wuxian.me.datetimesparksql;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hive.conf.HiveConf;
-import org.apache.hadoop.hive.ql.Driver;
 import org.apache.hadoop.hive.ql.exec.Description;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentException;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
@@ -67,7 +64,7 @@ public class ImportPostgresUDF extends GenericUDF {
     private String database;
     private String schema;
 
-    //Todo left join schema.table...
+    //insert into hive.xxx select * from pg.yyy;
     private void getInsertSelectString(ObjectInspector objectInspector) throws UDFArgumentException {
 
         if (objectInspector.getCategory() == ObjectInspector.Category.PRIMITIVE
@@ -86,7 +83,6 @@ public class ImportPostgresUDF extends GenericUDF {
                 throw new UDFArgumentException("invalid sql string!");
             }
 
-            //System.out.println("insertIntoSql: " + insertIntoSql);
             String databaseDot = ImportPostgresUtil.getDatabaseDot(insertIntoSql);
             if (databaseDot == null) {
                 throw new UDFArgumentException("invalid sql string!");
@@ -104,7 +100,6 @@ public class ImportPostgresUDF extends GenericUDF {
             if (schemaDot != null) {
                 int schIndex = originSql.indexOf(schemaDot);
                 builder.append(originSql.substring(index + databaseDot.length(), schIndex));
-                //builder.append(schemaDot);
                 builder.append(originSql.substring(schIndex + schemaDot.length()));
             } else {
                 builder.append(originSql.substring(index + databaseDot.length()));
@@ -131,19 +126,14 @@ public class ImportPostgresUDF extends GenericUDF {
         getInsertSelectString(objectInspectors[1]);
 
         //2 check sql
-        if (false && !ImportPostgresUtil.isValidInsertSelectSQL(sql)) { //Fixme:
+        if (false && !ImportPostgresUtil.isValidInsertSelectSQL(sql)) {
             throw new UDFArgumentException("sql not valid!");
         }
 
-        //3 check driver
-        Configuration configuration = MetastoreConf.newMetastoreConf();
-        HiveConf hiveConf = new HiveConf(configuration, HiveConf.class);
-        Driver driver = new Driver(hiveConf);
-
-        //4 check postgres connection
+        //3 check postgres connection
         initPostgresConnection(objectInspectors[0]);
 
-        //5 import postgres data
+        //4 import postgres data
         String selectSQL = ImportPostgresUtil.getPGSelectSQL(sql, schema);
         System.out.println("pg select sql: " + selectSQL);
         ResultSet resultSet = null;
@@ -162,13 +152,13 @@ public class ImportPostgresUDF extends GenericUDF {
             }
         }
 
-        //6 insert to hive
-        String insertSQL = ImportPostgresUtil.getHiveInsertSQL(sql, database);
+        //5 insert to hive
+        String insertSQL = ImportPostgresUtil.getHiveInsertSQL(sql, true, database);
         try {
-            //ImportPostgresUtil.useHiveDatabase(driver, database);
-            ret = ImportPostgresUtil.insertHiveTableBy(driver, insertSQL, resultSet, database);
+            ret = ImportPostgresUtil.insertHiveTableBy(insertSQL, resultSet, database);
         } catch (Exception e) {
-
+            e.printStackTrace();
+            ret = false;
         } finally {
             if (resultSet != null) {
                 try {
@@ -180,7 +170,6 @@ public class ImportPostgresUDF extends GenericUDF {
         }
         return PrimitiveObjectInspectorFactory.writableBooleanObjectInspector;
     }
-
 
     @Override
     public Object evaluate(DeferredObject[] deferredObjects) throws HiveException {
