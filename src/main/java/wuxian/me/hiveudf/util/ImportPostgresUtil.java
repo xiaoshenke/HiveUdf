@@ -1,4 +1,4 @@
-package wuxian.me.datetimesparksql.util;
+package wuxian.me.hiveudf.util;
 
 import com.sun.istack.Nullable;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentException;

@@ -1,4 +1,4 @@
-package wuxian.me.datetimesparksql.util;
+package wuxian.me.hiveudf.util;
 
 import org.apache.hadoop.hive.ql.exec.UDFArgumentException;
 import org.apache.hadoop.hive.ql.parse.ASTNode;

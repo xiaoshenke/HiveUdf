@@ -1,4 +1,4 @@
-package wuxian.me.datetimesparksql.util;
+package wuxian.me.hiveudf.util;
 
 import org.junit.Assert;
 import org.junit.Test;

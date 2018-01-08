@@ -1,4 +1,4 @@
-package wuxian.me.datetimesparksql;
+package wuxian.me.hiveudf;
 
 import org.apache.commons.dbcp.BasicDataSource;
 import org.apache.commons.dbcp.BasicDataSourceFactory;
@@ -13,7 +13,7 @@ import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory;
 import org.apache.hadoop.io.BooleanWritable;
-import wuxian.me.datetimesparksql.util.PgJdbc;
+import wuxian.me.hiveudf.util.PgJdbc;
 
 import javax.sql.DataSource;
 import java.io.IOException;

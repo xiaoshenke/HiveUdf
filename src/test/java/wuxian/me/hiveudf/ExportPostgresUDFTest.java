@@ -1,7 +1,7 @@
-package wuxian.me.datetimesparksql;
+package wuxian.me.hiveudf;
 
 import org.junit.Test;
-import wuxian.me.datetimesparksql.util.PgJdbc;
+import wuxian.me.hiveudf.util.PgJdbc;
 
 public class ExportPostgresUDFTest {
 

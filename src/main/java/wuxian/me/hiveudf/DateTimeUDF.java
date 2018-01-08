@@ -1,4 +1,4 @@
-package wuxian.me.datetimesparksql;
+package wuxian.me.hiveudf;
 
 import org.apache.hadoop.hive.ql.exec.Description;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentException;
@@ -15,14 +15,14 @@ import org.apache.hadoop.io.Text;
 import org.joda.time.DateTime;
 import org.apache.hadoop.io.IntWritable;
 import org.joda.time.format.DateTimeFormat;
-import wuxian.me.datetimesparksql.util.UDFUtil;
+import wuxian.me.hiveudf.util.UDFUtil;
 
 import java.sql.Timestamp;
 import java.util.HashSet;
 import java.util.Set;
 
-import static wuxian.me.datetimesparksql.util.UDFUtil.DATE_TIME_FORMAT;
-import static wuxian.me.datetimesparksql.util.UDFUtil.tryGetConverterFrom;
+import static wuxian.me.hiveudf.util.UDFUtil.DATE_TIME_FORMAT;
+import static wuxian.me.hiveudf.util.UDFUtil.tryGetConverterFrom;
 
 /**
  * single function supported:

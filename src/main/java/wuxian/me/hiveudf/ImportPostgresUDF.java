@@ -1,9 +1,8 @@
-package wuxian.me.datetimesparksql;
+package wuxian.me.hiveudf;
 
 import org.apache.hadoop.hive.ql.exec.Description;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentException;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
-import org.apache.hadoop.hive.ql.session.SessionState;
 import org.apache.hadoop.hive.ql.udf.UDFType;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDF;
 import org.apache.hadoop.hive.ql.udf.generic.NDV;
@@ -12,10 +11,8 @@ import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory;
 import org.apache.hadoop.io.BooleanWritable;
-import wuxian.me.datetimesparksql.util.DebugUtil;
-import wuxian.me.datetimesparksql.util.ImportPostgresUtil;
-import wuxian.me.datetimesparksql.util.MetastoreConf;
-import wuxian.me.datetimesparksql.util.PgJdbc;
+import wuxian.me.hiveudf.util.ImportPostgresUtil;
+import wuxian.me.hiveudf.util.PgJdbc;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
