@@ -1,2 +1,3 @@
-# Datetime-SparkSql
-datetime udf in spark sql.
+# HiveUdf
+
+a bounch of hiveudfs
