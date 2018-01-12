@@ -11,8 +11,6 @@ src/test/java/wuxian/me/hiveudf/ImportP*
 src/test/java/wuxian/me/hiveudf/HiveSemanticAnalyzerTest*
 src/main/java/wuxian/me/hiveudf/GetFireeye*
 src/main/java/wuxian/me/hiveudf/GetFireeyeParamUDF.java
-src/main/java/wuxian/me/hiveudf/d/*
-src/main/java/wuxian/me/hiveudf/d
 src/main/java/wuxian/me/hiveudf/GetFireeyeParamUDF.java
 src/main/java/wuxian/me/hiveudf/d/GetSparkSessionUDF.java
 lib
